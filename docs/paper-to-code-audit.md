@@ -15,7 +15,7 @@ The current `simulate.py`:
 - Reports sample count, under-capacity demand proxies, and provisioned-capacity proxies.
 - Makes no cloud API calls.
 
-The current implementation does **not** implement the paper's XGBoost model, three-controller experiment, confidence gate, out-of-distribution (OOD) check, paper-specific workload generators, or published metrics. The existing sample CSV is an illustrative 120-row workload and is not the paper's seven-day experimental dataset.
+The new `paper_repro/` package now contains an initial implementation of four synthetic workload generators, time-ordered features, an XGBoost ensemble, confidence/OOD gating with reactive fallback, controller simulation, metrics, CSV export, and plotting. Automated tests and a GitHub Actions workflow have been added. These changes have been committed on the research branch, but the experiment and tests have **not yet been executed in a verified runtime**. Exact numerical reproduction remains unverified. The existing sample CSV is still an illustrative 120-row workload and is not the paper's seven-day experimental dataset.
 
 ## Paper-to-code checklist
 

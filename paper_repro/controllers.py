@@ -7,7 +7,6 @@ pre-test calibration data. This is not asserted to be the paper's exact code.
 
 import math
 import statistics
-from collections import deque
 
 from .features import feature_row, make_supervised
 
@@ -21,6 +20,8 @@ def _xgb_regressor(seed, config):
         n_estimators=config.xgboost_estimators,
         max_depth=config.xgboost_max_depth,
         learning_rate=config.xgboost_learning_rate,
+        subsample=0.8,
+        colsample_bytree=0.8,
         objective="reg:squarederror",
         random_state=seed,
         n_jobs=1,

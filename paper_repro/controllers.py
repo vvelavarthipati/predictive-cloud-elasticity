@@ -53,8 +53,18 @@ class PredictiveEnsemble:
         center = statistics.fmean(predictions)
         uncertainty = _relative_disagreement(predictions)
         distance = _standardized_distance(row, self.means, self.scales)
-        accepted = uncertainty <= self.uncertainty_threshold and distance <= self.ood_threshold
-        return max(0.0, center), uncertainty, distance, accepted
+        uncertainty_rejected = uncertainty > self.uncertainty_threshold
+        ood_rejected = distance > self.ood_threshold
+        accepted = not uncertainty_rejected and not ood_rejected
+        if uncertainty_rejected and ood_rejected:
+            reason = "both"
+        elif uncertainty_rejected:
+            reason = "uncertainty"
+        elif ood_rejected:
+            reason = "ood"
+        else:
+            reason = "accepted"
+        return max(0.0, center), uncertainty, distance, accepted, reason
 
 
 def train_predictive_ensemble(demand, samples_per_day, config, seed):
@@ -142,12 +152,17 @@ def simulate_controller(demand, config, controller, ensemble=None, start_index=0
         uncertainty = None
         distance = None
         accepted = False
+        gate_reason = "not_applicable"
         if controller == "reactive":
             desired = _capacity(observed, config.target_utilization)
             action_delay = config.reactive_delay_steps
         else:
             row = feature_row(demand[:t + 1], t, config.samples_per_day)
-            forecast, uncertainty, distance, accepted = ensemble.predict(row)
+            prediction = ensemble.predict(row)
+            forecast, uncertainty, distance, accepted = prediction[:4]
+            gate_reason = prediction[4] if len(prediction) > 4 else (
+                "accepted" if accepted else "rejected"
+            )
             if controller == "xgboost" or accepted:
                 desired = _capacity(forecast, config.target_utilization)
                 action_delay = config.predictive_delay_steps
@@ -171,6 +186,7 @@ def simulate_controller(demand, config, controller, ensemble=None, start_index=0
             "excess_capacity": excess, "forecast": forecast,
             "uncertainty": uncertainty, "ood_distance": distance,
             "gate_accepted": accepted if controller != "reactive" else None,
+            "gate_reason": gate_reason,
         })
     return {
         "controller": controller,

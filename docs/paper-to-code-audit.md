@@ -79,6 +79,41 @@ These values are **reference targets for investigation**, not values to hard-cod
 - Preserve the current baseline and make the paper-reproduction implementation separately testable.
 - If the reported values cannot be reproduced, document the implementation details and likely causes rather than silently tuning to the desired answer.
 
+
+
+## Audit findings from the first executed reproduction attempt
+
+The implementation has now been run locally by the repository owner: 24 tests pass, and the experiment generates per-seed metrics, summary metrics, plots, and gate diagnostics. Exact reproduction is **not** achieved.
+
+| Area | What the paper states | What the current code does | Assessment |
+|---|---|---|---|
+| Workload timing | Training/calibration follow a normal pattern; test contains shifted and amplified demand | Uses a normal daily sinusoid plus seeded Gaussian noise; distribution shift applies `demand * 1.45 + 12` from the test boundary | Qualitatively aligned, but the exact shift magnitude and generator are not specified by the paper and remain reconstruction choices |
+| Train/calibration/test split | Gate thresholds use pre-test data only | 60% train, 20% calibration, final 20% test; shifted workload starts at the test boundary | Consistent with the stated high-level design; exact fractions are not specified in the paper |
+| Features | Current telemetry, multiple lags including 24-hour lag, rolling statistics, rate of change, calendar features | Includes current, short lags, 24-hour lag, rolling mean/variance, first difference, sine/cosine calendar phase | Broadly aligned, but window sizes and full feature definitions are implementation choices |
+| Ensemble uncertainty | Relative ensemble uncertainty/model disagreement | Relative population standard deviation divided by absolute ensemble mean | Plausible operationalization; exact formula is not fully specified in the paper |
+| OOD score | Feature-distance OOD score | RMS standardized Euclidean distance from training-feature means/scales | Plausible operationalization; exact distance and normalization are not specified in the paper |
+| Threshold calibration | Calibrated on pre-test data only | 90th percentile of calibration uncertainty and 99th percentile of calibration distance | Uses pre-test data only, but percentile choices are not stated in the paper |
+| Reactive timing | 15-minute actuation delay | Demand observed at time t schedules capacity at t+3 samples | Matches the stated delay at a high level |
+| Predictive timing | 15-minute forecast; five-minute predictive actuation delay | Forecast target is t+3; predicted capacity is scheduled for t+1 | Needs an explicit control interpretation: the forecast target and action arrival are different times, which is plausible but should be validated against the paper's intended semantics |
+| Confidence-gated fallback | Failed gate returns control to reactive path | Rejected predictions use observed demand and the reactive three-step delay | Broadly aligned with the described fallback behavior |
+| Capacity calculation | 90% target utilization | Requested capacity is `ceil(demand / 0.90)`; SLO is evaluated against provisioned units versus demand | Reasonable interpretation, but capacity units and rounding semantics are not fully specified in the paper |
+
+### Diagnostic evidence
+
+For the distribution-shift scenario, the current run shows pre-shift forecast MAE around 2.60–2.77, increasing to around 31.36–32.55 after the shift. Pre-shift gate acceptance is around 88–89%, while post-shift acceptance is around 0–2%. Most post-shift rejection is due to both the uncertainty and OOD tests failing together.
+
+This demonstrates that the current implementation detects its deliberately strong synthetic shift. It does **not** establish that the gate is correctly calibrated to reproduce the paper's reported 51% fallback rate.
+
+### Correct next steps
+
+1. Keep the current run as the baseline; do not tune thresholds to force the reported values.
+2. Add a sensitivity experiment for shift magnitude and baseline offset, and report the resulting forecast error, gate rejection, and SLO metrics. Treat it as a robustness experiment, not as reproduction.
+3. Make the action timeline explicit in a unit test: at each sample, log forecast target time, decision time, capacity-change arrival time, and demand interval used for SLO evaluation.
+4. Search for the original simulation source/configuration, if it exists. The article does not specify enough detail to uniquely infer the exact synthetic workload formula, uncertainty formula, OOD distance, or threshold percentiles from the text alone.
+5. After resolving those details, rerun the full three-seed experiment and compare with Table 2.
+
+No numerical reference values from Table 2 should be hard-coded into the simulator.
+
 ## Source
 
 Velavarthipati, V. (2026). Proactive Cloud Elasticity via XGBoost Predictive Scaling. *East African Journal of Information Technology, 9*(2), 418–427. https://doi.org/10.37284/eajit.9.2.5931

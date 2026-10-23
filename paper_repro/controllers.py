@@ -117,18 +117,16 @@ def _capacity(demand, target_utilization):
 def simulate_controller(demand, config, controller, ensemble=None, start_index=0):
     """Simulate delayed capacity actions over the test period.
 
-    The reactive controller schedules observed-demand capacity after its delay.
-    Predictive controllers schedule forecast-demand capacity after their shorter
-    delay. Pending changes are applied only at their configured arrival step.
+    Predictive actions are applied after the predictive delay. A rejected gated
+    forecast returns to the reactive path, including its longer reactive delay.
     """
     if controller not in ("reactive", "xgboost", "confidence_gated"):
         raise ValueError("unknown controller")
     if controller != "reactive" and ensemble is None:
         raise ValueError("predictive controllers require a trained ensemble")
-    delay = config.reactive_delay_steps if controller == "reactive" else config.predictive_delay_steps
+    rows = []
     capacity = _capacity(demand[start_index], config.target_utilization)
     pending = {}
-    rows = []
     used_predictive = 0
     fallbacks = 0
     for t in range(start_index, len(demand)):
@@ -141,16 +139,19 @@ def simulate_controller(demand, config, controller, ensemble=None, start_index=0
         accepted = False
         if controller == "reactive":
             desired = _capacity(observed, config.target_utilization)
+            action_delay = config.reactive_delay_steps
         else:
             row = feature_row(demand[:t + 1], t, config.samples_per_day)
             forecast, uncertainty, distance, accepted = ensemble.predict(row)
             if controller == "xgboost" or accepted:
                 desired = _capacity(forecast, config.target_utilization)
+                action_delay = config.predictive_delay_steps
                 used_predictive += 1
             else:
                 desired = _capacity(observed, config.target_utilization)
+                action_delay = config.reactive_delay_steps
                 fallbacks += 1
-        apply_at = t + delay
+        apply_at = t + action_delay
         if apply_at < len(demand):
             pending[apply_at] = desired
         unmet = max(0.0, observed - capacity * config.target_utilization)

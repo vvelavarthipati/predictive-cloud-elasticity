@@ -155,7 +155,9 @@ def simulate_controller(demand, config, controller, ensemble=None, start_index=0
         if apply_at < len(demand):
             pending[apply_at] = desired
         unmet = max(0.0, observed - capacity * config.target_utilization)
-        # Provisioned capacity is the allocated capacity_units; target utilization\n        # affects the safe demand threshold used for SLO compliance.\n        excess = max(0.0, capacity - observed)
+        # Provisioned capacity is the allocated capacity_units; target utilization
+        # affects the safe demand threshold used for SLO compliance.
+        excess = max(0.0, capacity - observed)
         rows.append({
             "index": t, "demand": observed, "capacity_units": capacity,
             "capacity_available": capacity * config.target_utilization,

@@ -1,9 +1,15 @@
 import unittest
 
 from paper_repro.config import ExperimentConfig
+from paper_repro.controllers import simulate_controller
 from paper_repro.features import feature_row, make_supervised
 from paper_repro.metrics import aggregate_runs, evaluate_run
 from paper_repro.workloads import SCENARIOS, generate_workload
+
+
+class FakeRejectedEnsemble:
+    def predict(self, row):
+        return 100.0, 0.5, 5.0, False
 
 
 class PaperReproductionTests(unittest.TestCase):
@@ -33,10 +39,10 @@ class PaperReproductionTests(unittest.TestCase):
             generate_workload("not-a-scenario", 10, 5, 1)
 
     def test_distribution_shift_occurs_after_boundary(self):
-        normal = generate_workload("distribution_shift", 100, 24, seed=7, shift_start=80)
+        shifted = generate_workload("distribution_shift", 100, 24, seed=7, shift_start=80)
         baseline = generate_workload("predictable", 100, 24, seed=7, shift_start=80)
-        self.assertEqual(normal[:80], baseline[:80])
-        self.assertTrue(sum(normal[80:]) > sum(baseline[80:]))
+        self.assertEqual(shifted[:80], baseline[:80])
+        self.assertTrue(sum(shifted[80:]) > sum(baseline[80:]))
 
     def test_feature_row_uses_only_prefix(self):
         prefix = [10.0, 11.0, 12.0, 13.0]
@@ -51,6 +57,22 @@ class PaperReproductionTests(unittest.TestCase):
         self.assertEqual(len(indices), len(X))
         self.assertEqual(len(X), len(y))
         self.assertEqual(y[0], demand[indices[0] + 3])
+
+    def test_gated_fallback_uses_reactive_delay(self):
+        config = ExperimentConfig(days=1)
+        demand = [10.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+        result = simulate_controller(
+            demand, config, "confidence_gated",
+            ensemble=FakeRejectedEnsemble(), start_index=0,
+        )
+        capacities = [row["capacity_units"] for row in result["rows"]]
+        # Demand observed at step 1 is scheduled through the reactive 3-step delay,
+        # so it must not be applied at steps 1, 2, or 3.
+        self.assertEqual(capacities[1], capacities[0])
+        self.assertEqual(capacities[2], capacities[0])
+        self.assertEqual(capacities[3], capacities[0])
+        self.assertGreater(capacities[4], capacities[3])
+        self.assertEqual(result["fallback_decisions"], len(demand))
 
     def test_metrics_and_aggregation(self):
         simulation = {

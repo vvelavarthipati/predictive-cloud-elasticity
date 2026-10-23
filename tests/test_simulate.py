@@ -1,6 +1,8 @@
+import os
+import tempfile
 import unittest
 
-from simulate import evaluate, workload
+from simulate import evaluate, load_csv, workload
 
 
 class SimulationTests(unittest.TestCase):
@@ -29,6 +31,15 @@ class SimulationTests(unittest.TestCase):
 
     def test_empty_workload_returns_zero_samples(self):
         self.assertEqual(evaluate([])["samples"], 0)
+
+    def test_load_csv(self):
+        with tempfile.NamedTemporaryFile("w", newline="", encoding="utf-8", delete=False) as f:
+            f.write("timestamp,demand_units,scenario\n2026-01-01T00:00:00Z,42,quiet\n")
+            path = f.name
+        try:
+            self.assertEqual(load_csv(path), [42])
+        finally:
+            os.unlink(path)
 
 
 if __name__ == "__main__":

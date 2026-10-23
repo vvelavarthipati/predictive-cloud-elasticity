@@ -58,6 +58,26 @@ class PaperReproductionTests(unittest.TestCase):
         self.assertEqual(len(X), len(y))
         self.assertEqual(y[0], demand[indices[0] + 3])
 
+    def test_slo_violation_compares_demand_with_provisioned_capacity(self):
+        config = ExperimentConfig(days=1)
+        # The initial capacity is based on the pre-test value (9), provisioned
+        # at 90% target utilization -> 10 units. Demand 9.5 fits in 10 provisioned
+        # units, so it must not be counted as an SLO violation.
+        demand = [9.0, 9.5, 9.5, 9.5, 9.5]
+        result = simulate_controller(demand, config, "reactive", start_index=1)
+        first_test_row = result["rows"][0]
+        self.assertEqual(first_test_row["capacity_units"], 10.0)
+        self.assertFalse(first_test_row["slo_violation"])
+        self.assertEqual(first_test_row["unmet_demand"], 0.0)
+        self.assertEqual(first_test_row["excess_capacity"], 0.5)
+
+    def test_controller_does_not_initialize_from_first_test_demand(self):
+        config = ExperimentConfig(days=1)
+        demand = [10.0, 100.0, 100.0, 100.0, 100.0, 100.0]
+        result = simulate_controller(demand, config, "reactive", start_index=1)
+        self.assertEqual(result["rows"][0]["capacity_units"], 12.0)
+        self.assertTrue(result["rows"][0]["slo_violation"])
+
     def test_gated_fallback_uses_reactive_delay(self):
         config = ExperimentConfig(days=1)
         demand = [10.0, 100.0, 100.0, 100.0, 100.0, 100.0]

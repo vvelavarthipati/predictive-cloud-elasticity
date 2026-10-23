@@ -125,13 +125,18 @@ def simulate_controller(demand, config, controller, ensemble=None, start_index=0
     if controller != "reactive" and ensemble is None:
         raise ValueError("predictive controllers require a trained ensemble")
     rows = []
-    capacity = _capacity(demand[start_index], config.target_utilization)
+    # Initialize from the last pre-test observation, not the first test demand.
+    # This avoids giving the controller information from the test interval itself.
+    initial_observation = demand[max(0, start_index - 1)]
+    capacity = _capacity(initial_observation, config.target_utilization)
     pending = {}
     used_predictive = 0
     fallbacks = 0
     for t in range(start_index, len(demand)):
+        # A gated controller can mix predictive and reactive delays, so multiple
+        # actions can become due at the same step. Apply them in decision order.
         if t in pending:
-            capacity = pending.pop(t)
+            capacity = pending.pop(t)[-1]
         observed = float(demand[t])
         forecast = None
         uncertainty = None
@@ -153,14 +158,15 @@ def simulate_controller(demand, config, controller, ensemble=None, start_index=0
                 fallbacks += 1
         apply_at = t + action_delay
         if apply_at < len(demand):
-            pending[apply_at] = desired
-        unmet = max(0.0, observed - capacity * config.target_utilization)
-        # Provisioned capacity is the allocated capacity_units; target utilization
-        # affects the safe demand threshold used for SLO compliance.
+            pending.setdefault(apply_at, []).append(desired)
+        # Paper definition: an SLO violation occurs only when provisioned
+        # capacity itself is below actual demand. Target utilization influences
+        # the capacity requested by the controller, not this evaluation threshold.
+        unmet = max(0.0, observed - capacity)
         excess = max(0.0, capacity - observed)
         rows.append({
             "index": t, "demand": observed, "capacity_units": capacity,
-            "capacity_available": capacity * config.target_utilization,
+            "capacity_available": capacity,
             "slo_violation": unmet > 1e-9, "unmet_demand": unmet,
             "excess_capacity": excess, "forecast": forecast,
             "uncertainty": uncertainty, "ood_distance": distance,

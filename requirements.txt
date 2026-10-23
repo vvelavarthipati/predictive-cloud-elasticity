@@ -1,1 +1,3 @@
-# No third-party dependencies required for the starter simulation.
+# Dependencies for the paper-reproduction experiment.
+# Pin the major/minor line for reproducibility; record the resolved version in experiment artifacts.
+xgboost>=2.0,<4.0

@@ -62,4 +62,4 @@ The experiment is configured for a five-minute telemetry interval, seven simulat
 - Three seeds provide limited statistical power. The reported normal-approximation confidence interval is descriptive, not a strong inferential guarantee.
 - Generated CSVs and figures must come from actual experiment runs; do not claim the paper's values were reproduced until the run has been executed and checked.
 
-The research implementation is isolated on the `research/paper-reproducibility-audit` branch so the existing `main` branch remains unchanged during development.
+The research implementation has been merged into `main`. The `research/paper-reproducibility-audit` branch is retained as a development/reference branch.

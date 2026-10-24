@@ -3,9 +3,9 @@
 **Paper:** Venkata Velavarthipati (2026), *Proactive Cloud Elasticity via XGBoost Predictive Scaling*  
 **Journal:** East African Journal of Information Technology, 9(2), pp. 418–427  
 **DOI:** https://doi.org/10.37284/eajit.9.2.5931  
-**Audit status:** Initial repository review; no reproduction run has been performed yet.
+**Audit status:** Initial reproduction run completed and documented; local tests and experiment execution were reported by the repository owner. Exact numerical reproduction has not been achieved.
 
-This checklist maps the published paper's stated experimental design to the current repository. It is an implementation plan, not a claim that the paper's results have already been reproduced.
+This audit maps the published paper's stated experimental design to the repository implementation and records validation findings. The implementation has been run locally, but the paper's published numerical results have not been exactly reproduced.
 
 ## Current repository baseline
 
@@ -15,7 +15,9 @@ The current `simulate.py`:
 - Reports sample count, under-capacity demand proxies, and provisioned-capacity proxies.
 - Makes no cloud API calls.
 
-The new `paper_repro/` package now contains an initial implementation of four synthetic workload generators, time-ordered features, an XGBoost ensemble, confidence/OOD gating with reactive fallback, controller simulation, metrics, CSV export, and plotting. Automated tests and a GitHub Actions workflow have been added. These changes have been committed on the research branch, but the experiment and tests have **not yet been executed in a verified runtime**. Exact numerical reproduction remains unverified. The existing sample CSV is still an illustrative 120-row workload and is not the paper's seven-day experimental dataset.
+The `paper_repro/` package contains four synthetic workload generators, time-ordered features, an XGBoost ensemble, confidence/OOD gating with reactive fallback, controller simulation, metrics, CSV export, and plotting. Automated tests and a GitHub Actions workflow are included. The repository owner reports that all 24 tests pass locally and that the experiment runs successfully, generating per-seed metrics, summary metrics, plots, and gate diagnostics. Exact numerical reproduction remains unverified. The existing sample CSV is still an illustrative 120-row workload and is not the paper's seven-day experimental dataset.
+
+**Historical checklist note:** The checklist immediately below was drafted before implementation and is retained as a record of the original plan. Its “Missing” statuses and “Planned evidence” column are historical and should not be read as the current implementation status; the executed-run findings later in this document describe the current implementation.
 
 ## Paper-to-code checklist
 

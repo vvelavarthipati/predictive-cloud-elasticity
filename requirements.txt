@@ -1,1 +1,4 @@
-# No third-party dependencies required for the starter simulation.
+# Dependencies for the paper-reproduction experiment.
+# Record resolved versions alongside results for reproducibility.
+xgboost>=2.0,<4.0
+matplotlib>=3.8,<4.0

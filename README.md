@@ -2,82 +2,64 @@
 
 A small Python research prototype for exploring predictive cloud autoscaling using synthetic workloads and simplified capacity metrics.
 
-## Goals
+## Existing starter simulation
 
-- Generate reproducible synthetic demand traces.
-- Compare a reactive capacity baseline with a simple moving-average predictor.
-- Measure simplified under-capacity and provisioned-capacity proxies.
-- Establish a foundation for future forecasting and confidence-gated scaling experiments.
+The original starter remains available:
+- `simulate.py` — synthetic workload generator, CSV loader, and reactive-vs-moving-average comparison.
+- `data/sample_workload.csv` — 120 illustrative synthetic samples.
+- `tests/test_simulate.py` — starter unit tests.
 
-## Repository contents
-
-- `simulate.py` — synthetic workload generator, CSV loader, and baseline comparison.
-- `data/sample_workload.csv` — 120 illustrative samples spanning quiet, ramp-up, high-load, cooldown, burst, and recovery scenarios.
-- `tests/test_simulate.py` — unit tests.
-- `requirements.txt` — no third-party dependencies required.
-
-## Requirements
-
-Python 3.9+; no external packages are required for the starter.
-
-## Run with built-in synthetic data
+Run it with:
 
 ```bash
 python simulate.py
+python simulate.py data/sample_workload.csv
+python -m unittest discover -s tests -v
 ```
 
-## Run with the sample CSV
+The starter's moving-average method is not the XGBoost method described in the published paper. Its simplified capacity proxies are not direct measurements of latency, availability, cloud cost, or production utilization.
+
+## Published-paper reproduction experiment
+
+The `paper_repro/` package is being developed as a separate experiment implementation for:
+
+Velavarthipati, V. (2026). *Proactive Cloud Elasticity via XGBoost Predictive Scaling*. East African Journal of Information Technology, 9(2), 418–427. https://doi.org/10.37284/eajit.9.2.5931
+
+Read the implementation audit in [docs/paper-to-code-audit.md](docs/paper-to-code-audit.md) and the run guide in [docs/paper-reproduction.md](docs/paper-reproduction.md).
+
+Install dependencies:
 
 ```bash
-python simulate.py data/sample_workload.csv
+python -m pip install -r requirements.txt
 ```
 
-The CSV must contain a `demand_units` column. Additional columns such as `timestamp` and `scenario` describe the sample but are not used by the current model.
-
-## Run tests
+Run the tests:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-## Simulation methodology
+Run the full synthetic experiment:
 
-1. Generate or load a synthetic demand trace.
-2. Calculate a reactive capacity level from current demand.
-3. Calculate a second capacity level from the mean of up to five previous samples.
-4. Accumulate simplified under-capacity and provisioned-capacity indicators for both policies.
+```bash
+python -m paper_repro.run_experiment --output-dir results
+```
 
-### Metrics
+Generate a figure from the experiment summary:
 
-- **Under-capacity proxy:** sum of demand above selected capacity at each sample.
-- **Provisioned-capacity proxy:** sum of selected capacity across all samples.
+```bash
+python -m paper_repro.plot_results --summary results/summary_results.csv --output-dir results/figures
+```
 
-These are simplified indicators, not direct measurements of latency, availability, infrastructure cost, or real cloud utilization.
+The experiment is configured for a five-minute telemetry interval, seven simulated days, a 15-minute forecast horizon, a 90% target-utilization setting, and seeds 11, 22, and 33. It includes predictable, bimodal, rapid-spike, and distribution-shift scenarios, and compares reactive, ungated XGBoost, and confidence-gated XGBoost controllers.
 
-## Limitations
+## Reproducibility and limitations
 
-- The included CSV is synthetic, not production telemetry.
-- The moving-average method is a baseline, not a trained ML model.
-- No cloud services are called.
-- Results depend on the workload and assumptions; they are not evidence of real-world performance.
-- The reactive baseline uses current demand while the moving-average baseline uses previous demand, so this is a teaching comparison rather than a fair production benchmark.
+- Workloads are synthetic; no AWS, Kubernetes, or production APIs are called.
+- The confidence gate uses an explicit implementation choice: relative ensemble disagreement and standardized feature-distance thresholds calibrated on pre-test data. The paper does not provide enough implementation detail to claim this is an exact reproduction of its original code.
+- The paper's published numerical results are reference values for comparison, not hard-coded outputs.
+- Any mismatch must be investigated and reported transparently.
+- Three seeds provide limited statistical power. The reported normal-approximation confidence interval is descriptive, not a strong inferential guarantee.
+- Generated CSVs and figures must come from actual experiment runs; do not claim the paper's values were reproduced until the run has been executed and checked.
 
-## Research references
-
-- Kubernetes, [Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/).
-- Chen and Guestrin, [XGBoost: A Scalable Tree Boosting System](https://doi.org/10.1145/2939672.2939785), KDD 2016.
-- Mao et al., [Resource Management with Deep Reinforcement Learning](https://doi.org/10.1145/3005745.3005750), HotNets 2016.
-
-These references provide background only; they do not validate the current simulation.
-
-## Roadmap
-
-- [ ] Add multiple workload profiles and repeated random seeds.
-- [ ] Add a true next-step forecast and compare with simple baselines.
-- [ ] Add optional XGBoost and confidence-gated scaling.
-- [ ] Export results to CSV and plot metrics.
-- [ ] Add continuous integration.
-
-## Research integrity
-
-Describe current outputs as synthetic simulation results. Do not present them as measured cloud results unless real infrastructure experiments are performed and documented.
+The research implementation is isolated on the `research/paper-reproducibility-audit` branch so the existing `main` branch remains unchanged during development.

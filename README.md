@@ -63,3 +63,41 @@ The experiment is configured for a five-minute telemetry interval, seven simulat
 - Generated CSVs and figures must come from actual experiment runs; do not claim the paper's values were reproduced until the run has been executed and checked.
 
 The research implementation has been merged into `main`. The `research/paper-reproducibility-audit` branch is retained as a development/reference branch.
+
+## Frequently asked questions
+
+### What problem does this research address?
+
+Reactive autoscaling responds to observed demand and can be delayed while new capacity becomes available. This project explores whether forecasting future demand with XGBoost can support more proactive capacity decisions.
+
+### Which controllers are compared?
+
+The experiment compares a reactive controller, an ungated XGBoost predictive controller, and a confidence-gated XGBoost controller that falls back to reactive behavior when its prediction gate rejects a forecast.
+
+### What does confidence-gated scaling mean?
+
+The implementation checks forecast uncertainty and an out-of-distribution (OOD) score. If the checks pass, the predictive path can be used; otherwise, the controller follows the reactive fallback path. The exact formulas and threshold percentiles are implementation choices because the paper does not fully specify them.
+
+### What workloads are tested?
+
+Four synthetic scenarios are included: predictable demand, bimodal demand, rapid spikes, and distribution shift. They support controlled experiments but are not substitutes for validation on real production traces.
+
+### What does SLO violation mean in this repository?
+
+It is the percentage of test intervals in which provisioned capacity is below simulated demand. It is a capacity-based simulation metric, not a direct measurement of application latency, availability, or a production SLO.
+
+### Does this code deploy to AWS or Kubernetes?
+
+No. The current experiment runs locally with synthetic workloads and simulated capacity decisions. It does not call production AWS or Kubernetes APIs.
+
+### Have the published numerical results been reproduced exactly?
+
+No. The experiment has been run locally and the repository owner reported that all 24 tests passed, but the current numerical results do not exactly match the published paper. The implementation assumptions and differences are documented in [the paper-to-code audit](docs/paper-to-code-audit.md). Published values are not hard-coded into the simulator.
+
+### How do I run the experiment?
+
+Install dependencies with `python -m pip install -r requirements.txt`, run tests with `python -m unittest discover -s tests -v`, then execute `python -m paper_repro.run_experiment --output-dir results`. See [the reproduction guide](docs/paper-reproduction.md) for details.
+
+### What are the main limitations?
+
+The workloads are synthetic, some controller and gate details must be reconstructed from an incompletely specified paper, and only three random seeds are used. Results should therefore be treated as preliminary simulation evidence rather than proof of production performance.

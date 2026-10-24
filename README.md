@@ -53,6 +53,40 @@ python -m paper_repro.plot_results --summary results/summary_results.csv --outpu
 
 The experiment is configured for a five-minute telemetry interval, seven simulated days, a 15-minute forecast horizon, a 90% target-utilization setting, and seeds 11, 22, and 33. It includes predictable, bimodal, rapid-spike, and distribution-shift scenarios, and compares reactive, ungated XGBoost, and confidence-gated XGBoost controllers.
 
+
+## Architecture overview
+
+The diagram summarizes the current **local simulation**. It uses synthetic demand and simulated capacity decisions; it does not provision real cloud resources.
+
+```mermaid
+flowchart TD
+    A["Synthetic workload scenarios<br/>predictable · bimodal · rapid spikes · distribution shift"]
+    B["Time-ordered feature engineering<br/>lags · rolling statistics · rate of change · calendar features"]
+    C["XGBoost ensemble<br/>forecast future demand"]
+    D["Confidence and OOD checks<br/>ensemble disagreement + feature distance"]
+    E{"Gate passes?"}
+    F["Predictive controller<br/>use forecast-based capacity decision"]
+    G["Reactive fallback<br/>use observed demand with reactive delay"]
+    H["Ungated XGBoost controller<br/>forecast-based path without gate"]
+    I["Reactive baseline controller<br/>observed-demand path"]
+    J["Simulation and evaluation<br/>capacity · SLO violation · excess capacity · forecast metrics"]
+    K["Results artifacts<br/>per-seed CSV · summary CSV · gate diagnostics · figures"]
+
+    A --> B --> C
+    C --> D --> E
+    E -- Yes --> F
+    E -- No --> G
+    A --> H
+    A --> I
+    F --> J
+    G --> J
+    H --> J
+    I --> J
+    J --> K
+```
+
+**How to read it:** The confidence-gated path uses the XGBoost forecast only when both gate checks pass; otherwise, it falls back to the reactive path. The experiment evaluates the reactive baseline, ungated predictive controller, and confidence-gated controller against the same synthetic workload scenarios. Gate formulas and thresholds are documented implementation choices, not a claim of exact reproduction of the paper's original code.
+
 ## Reproducibility and limitations
 
 - Workloads are synthetic; no AWS, Kubernetes, or production APIs are called.
